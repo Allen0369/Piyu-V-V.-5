@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link href="https://fonts.googleapis.com/css?family=Inter&display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+	<title>Piyu-V Dashboard</title>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</head>
+<body>
+	<div id="overlay_save" onclick="off_save()">
+	  <div id="text_save" style="text-align:center"><br>Report Saved!</div>
+	</div>
+	
+	<div id="overlay_upload" onclick="off_upload()">
+		<div class="file_uploader" id="text_upload">
+			<br>
+			<p style="padding-left:25px; font-size:20px;"><b> Upload Data </b></p>
+			<form action="">
+				<div class="form">
+					<input name="file" id="entry_value" ref="fileInput" type="file" onchange="fileValidation()" multiple>
+					<div> 
+						Upload dataset(s) here or &nbsp
+						<button class="btn bg-color-dblue btn-primary px-4 py-3">Browse</button>
+					</div>
+				</div>
+			</form> 
+		</div>
+	</div>
+	
+	<div class="main_header"> 
+		<a class="brand" href="{{ url_for('home') }}" title="Piyu-V"> Piyu-V </a>
+		<p class="dashboard"> Dashboard </p>
+		<div class="header_buttons" style="align: right">
+			<!--<button class="button" onclick="on_save()" style="margin-right: 20px">Save Report</button>-->
+			<button class="button" onclick="on_upload()">Upload Data</button>
+		</div>
+	</div>
+	
+	<div id="progressBarContainer">
+		<div id="progressBar"></div>
+	</div>
+	
+	<br><br><br><br><br>
+
+	<div id="chart-sections"></div>
+
+	<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+	<!--<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>-->
+
+	<script>
+	function getPlotlyConfig(customFilename) {
+		return {
+			toImageButtonOptions: {
+				filename: customFilename || 'plotly_chart',
+				format: 'png',
+				height: 600,
+				width: 900,
+				scale: 1
+			},
+			displaylogo: false
+		};
+	}
+
+	document.addEventListener("DOMContentLoaded", () => {
+		const urlParams = new URLSearchParams(window.location.search);
+		const sessionId = urlParams.get("session_id");
+
+		if (!sessionId) {
+			document.body.innerHTML = "<p>Missing session ID.</p>";
+			return;
+		}
+
+		fetch(`/results/${sessionId}`)
+		.then(response => response.json())
+		.then(results => {
+			if (!results || !results.lstm_results || results.lstm_results.length === 0) {
+				document.body.innerHTML = "<p>No results to display.</p>";
+				return;
+			}
+
+			const wrapper = document.getElementById('chart-sections');
+
+			const lstmData = results.lstm_results;
+			const initialData = results.initial;
+			const filenames = results.files_processed || ["combined_data"];
+			const safeId = "combined";
+			
+			const summaryWrapper = document.createElement('div');
+			
+			const summaryTitle = document.createElement('h4');
+			summaryTitle.textContent = `Data summary for: ${filenames.join(' | ')}`;
+
+			const summaryContainer = document.createElement('div');
+			summaryContainer.id = 'summary-bar-charts';
+			summaryContainer.style.marginBottom = '40px';
+			summaryContainer.style.maxHeight = '480px';
+			summaryContainer.style.overflowY = 'scroll';
+			summaryContainer.style.border = '1px solid gray';
+			summaryContainer.style.padding = '10px';
+			summaryContainer.style.maxWidth = '1500px';
+			wrapper.appendChild(summaryContainer);
+			
+			summaryWrapper.appendChild(summaryTitle);
+			summaryWrapper.appendChild(summaryContainer);
+			wrapper.appendChild(summaryWrapper);
+
+			const section = document.createElement('div');
+			section.style.marginBottom = '40px';
+			section.innerHTML = `
+				<h4>Predicted results for: ${filenames.join(' | ')}</h4>
+				<div id="aggregated-pc-${safeId}"></div>
+				<div style="max-height: 500px; max-width: 1500px; overflow-y: scroll; border: 1px solid gray; padding: 10px;" id="faceted-pc-${safeId}"></div>
+			`;
+			
+			wrapper.appendChild(section);
+			
+			drawSummaryBarCharts(initialData, safeId, summaryContainer);
+			drawAggregatedPassengerCount(lstmData, safeId);
+			drawPassengerCount(lstmData, safeId);
+		})
+		.catch(err => {
+			console.error("Error fetching results:", err);
+			document.body.innerHTML = "<p>Error loading results.</p>";
+		});
+	});
+
+	function drawSummaryBarCharts(data, safeId, container) {
+		const dayMap = {
+			0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday",
+			4: "Friday", 5: "Saturday", 6: "Sunday"
+		};
+		const order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+		const aggByDay = {};
+		data.forEach(row => {
+			const dayNum = parseInt(row.day_of_week);
+			const dayName = dayMap[dayNum] || `Day ${dayNum}`;
+			aggByDay[dayName] = row;
+		});
+
+		const totalTripCount = order.map(day => aggByDay[day]?.trip_distance_count || 0);
+		const avgTripDistance = order.map(day => aggByDay[day]?.trip_distance_mean || 0);
+		const totalPassengers = order.map(day => aggByDay[day]?.passenger_count_sum || 0);
+		const avgTripDuration = order.map(day => aggByDay[day]?.trip_duration_mean || 0);
+
+		function plotBar(title, yData, yTitle, filename) {
+			const div = document.createElement('div');
+			container.appendChild(div);
+
+			Plotly.newPlot(div, [{
+				x: order,
+				y: yData,
+				type: 'bar',
+				marker: { color: '#1950A3' }
+			}], {
+				title: title,
+				xaxis: { title: 'Day of Week' },
+				yaxis: { title: yTitle }
+			}, getPlotlyConfig(filename));
+		}
+
+		plotBar('Total Trip Count per Day', totalTripCount, 'Trip Count', 'Total_Trip_Count');
+		plotBar('Average Trip Distance per Day', avgTripDistance, 'Distance (miles)', 'Average_Trip_Distance');
+		plotBar('Total Passengers per Day', totalPassengers, 'Total Passengers', 'Total_Passenger_Count');
+		plotBar('Average Trip Duration per Day', avgTripDuration, 'Duration (minutes)', 'Average_Trip_Duration');
+	}
+
+	const dayMap = {
+		0: "Monday",
+		1: "Tuesday",
+		2: "Wednesday",
+		3: "Thursday",
+		4: "Friday",
+		5: "Saturday",
+		6: "Sunday"
+	};
+
+	function drawAggregatedPassengerCount(data, safeId) {
+		const dailyTotals = {};
+		data.forEach(row => {
+			const dayNum = parseInt(row['day_of_week']);
+			const dayName = dayMap[dayNum] || dayNum;
+			const count = parseFloat(row['prediction'] || row['log_passenger_count_lag7']) || 0;
+			if (!dailyTotals[dayName]) dailyTotals[dayName] = 0;
+			dailyTotals[dayName] += count;
+		});
+
+		const order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+		const x = order.filter(day => day in dailyTotals);
+		const y = x.map(day => dailyTotals[day]);
+
+		Plotly.newPlot(`aggregated-pc-${safeId}`, [{
+			x: x,
+			y: y,
+			type: 'scatter',
+			mode: 'lines+markers',
+			line: {
+				color: '#1950A3'
+			},
+			marker: {
+				color: '#1950A3'
+			}
+		}], {
+			title: `Aggregated Predicted Passenger Count per Day`,
+			xaxis: { title: 'Day of Week' },
+			yaxis: { title: 'Total Predicted Passenger Count' }
+		}, getPlotlyConfig(`Aggregated_Passenger_Count`));
+	}
+
+	function drawPassengerCount(data, safeId) {
+		const grouped = {};
+
+		data.forEach(row => {
+			const loc = row['PULocationID'];
+			const dayNum = parseInt(row['day_of_week']);
+			const dayName = dayMap[dayNum] || dayNum;
+			const count = parseFloat(row['prediction'] || row['log_passenger_count_lag7']) || 0;
+
+			if (!grouped[loc]) grouped[loc] = {};
+			if (!grouped[loc][dayName]) grouped[loc][dayName] = 0;
+			grouped[loc][dayName] += count;
+		});
+
+		const container = document.getElementById(`faceted-pc-${safeId}`);
+		container.innerHTML = '';
+
+		const order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+		Object.keys(grouped).forEach(loc => {
+			const div = document.createElement('div');
+			div.id = `chart-location-${safeId}-${loc}`;
+			div.style.marginBottom = '30px';
+			container.appendChild(div);
+
+			const days = Object.keys(grouped[loc]).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+			const counts = days.map(day => grouped[loc][day]);
+
+			Plotly.newPlot(div.id, [{
+				x: days,
+				y: counts,
+				type: 'scatter',
+				mode: 'lines+markers',
+				name: `Location ${loc}`,
+				line: {
+					color: '#1950A3'
+				},
+				marker: {
+					color: '#1950A3'
+				}
+			}], {
+				title: `Pick-up Location ID: ${loc}`,
+				xaxis: { title: 'Day of Week' },
+				yaxis: { title: 'Predicted Passenger Count' }
+			}, getPlotlyConfig(`Passenger_Count_in_Loc${loc}`));
+		});
+	}
+	</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title> Piyu-V Decision Support Tool </title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+	<div class="main_header"> 
+		<a class="brand" href="{{ url_for('home') }}" title="Piyu-V"> Piyu-V </a>
+		<a class="about" href="#about_us"> About Us </a>
+	</div>
+	
+	<div id="progressBarContainer">
+		<div id="progressBar"></div>
+	</div>
+	
+		<div class="frame_upload">
+			<div class="title""> 
+				<h1 class="home_title" style="margin-top: 150px">A Decision Support Tool for<br>Public Transit Optimization</h1>
+				<p class="home_desc" style="width:75%; margin:auto; text-align: center; font-size: 25px; margin-top: 50px; margin-bottom: 60px; line-height:40px; color=#242423">Enhance Public Transportation through <i>Dynamic Resource Allocation</i>,<br><i>Novel Scheduling Patterns</i>, and <i>Route Structure Optimization</i></p>
+			</div>
+			
+			<div id="overlay_upload" onclick="off_upload(event)">
+				<div class="file_uploader" id="text_upload">
+					<br>
+					<form action="">
+					<div class="puv_selector">
+						<label><b>Select PUV Type:</b></label><br><br>
+						<input type="radio" id="jeepney" name="puv_type" value="Jeepney">
+						<label for="jeepney">Jeepney</label>
+
+						<input type="radio" id="bus" name="puv_type" value="Bus">
+						<label for="bus">Bus</label>
+
+						<input type="radio" id="uv" name="puv_type" value="UV Express">
+						<label for="uv">UV Express</label>
+					</div>
+					<div class="form">
+						<input name="file" id="entry_value" ref="fileInput" type="file" onchange="fileValidation()" multiple>
+						<div> 
+							Upload dataset(s) here or &nbsp
+							<button class="btn bg-color-dblue btn-primary px-4 py-3">Browse</button>
+						</div>
+					</div>
+				</form> 
+				</div>
+			</div>
+			<div class="button_holder"> 
+				<button class="upload_button" onclick="on_upload()">Upload Data</button>
+			</div>
+			<br><br>
+		</div>
+		
+		<div class="frame_info">
+			<div class="title2"> 
+				<table class="data-table" style="padding-top: 40px">
+					<tr>
+						<th colspan=2> FAQs </th>
+					</tr>
+					<tr>
+						<td colspan=2 style="color: #1950A3"> <b>What is Piyu-V?</b></td>
+					</tr>
+					<tr>
+						<td style="width: 3%"> </td>
+						<td style="color: #2C2C2C">This is a research-oriented and data-driven project aimed at building a hybrid model of machine learning algorithms such as ST-GCN and LSTM to optimize public transportation. It predicts demand and recommends strategies for route optimizations by analyzing historical data. Moreover, it integrates and tailors several emerging technologies in spatial-temporal modeling to align the goals of urban planning with sustainability, mobility, and efficiency for long-term solutions at a system level—which would cater to different stakeholders, such as policymakers, transit operators, and commuters.</td>
+					</tr>
+					<tr>
+						<td colspan=2 style="color: #1950A3"> <b>What file types does Piyu-V accept? </b></td>
+					</tr>
+					<tr>
+						<td style="width: 3%"> </td>
+						<td style="color: #2C2C2C"> Piyu-V only accepts files that are in <b>.csv</b> formats for <i>trip data</i>.</td>
+					</tr>
+					<tr>
+						<td colspan=2 style="color: #1950A3"> <b>What should be the contents of the trip dataset?  </b></td>
+					</tr>
+					<tr>
+						<td style="width: 3%"> </td>
+						<td style="color: #2C2C2C"> In order to achieve Piyu-V's full capacity, the trip dataset to be uploaded should contain the following attributes: date, PULocationID, day_of_week, and passenger_count. For more information, please refer to <a href="{{ url_for('static', filename='files/piyu-v_data_guide.pdf') }}">Piyu-V-trip-data-guide</a>. </td>
+					</tr>
+					<tr>
+						<td colspan=2 style="color: #1950A3"> <b>Does Piyu-V support multiple file uploads?  </b></td>
+					</tr>
+					<tr>
+						<td style="width: 3%"> </td>
+						<td style="color: #2C2C2C"> Yes, just ensure that the files have the corresponding attribute names.</td>
+					</tr>
+					<tr>
+						<td colspan=2 style="color: #1950A3"> <b>Does Piyu-V perform data pre-processing?  </b></td>
+					</tr>
+					<tr>
+						<td style="width: 3%"> </td>
+						<td style="color: #2C2C2C"> Currently, Piyu-V does not have a data pre-processing feature. This means that whatever you upload will be directly used by the system for model execution without any automatic data cleaning, transformation, or formatting. The system relies on the uploaded data being in the correct format for the model to run effectively. </td>
+					</tr>
+				<table>
+			</div>
+		</div>
+		
+		<div class="frame_about" id="about_us">
+			<div class="title3">
+				<h2 class="define" style="padding-top: 15px"># d e f i n e</h2>
+			</div>
+			<p style="text-align: center; padding-top: 40px; font-size: 18px">We are <b>#define</b>: 3rd-year BS Computer Science with specialization in Data Science students from FEU Tech.</p>
+			<div class="group-description">
+			<table>
+			  <tr>
+				<th style="width: 20%">Member</th>
+				<th style="width: 30%">Role</th>
+				<th style="width: 20%">Contact</th>
+			  </tr>
+			  <tr>
+				<td>REYES, Jan Vincenzo C.</td>
+				<td>Project Manager</td>
+				<td>202210119@fit.edu.ph</td>
+			  </tr>
+			  <tr>
+				<td>SY, Janella Myzel B.</td>
+				<td>Developer</td>
+				<td>202211258@fit.edu.ph</td>
+			  </tr>
+			  <tr>
+				<td>DE JESUS, Maranatha Grace G.</td>
+				<td>UI/UX Designer</td>
+				<td>202210893@fit.edu.ph</td>
+			  </tr>
+			  <tr>
+				<td>ATENTAR, Joseph Allen D.</td>
+				<td>Quality Assurance</td>
+				<td>202210883@fit.edu.ph</td>
+			  </tr>
+			</table>
+			</div>
+			<div class="group-text">
+				<p><br>©2025 Atentar, De Jesus, Reyes, Sy<br>All Rights Reserved </p>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
